@@ -13,6 +13,9 @@ We start by using a dataset of face images, (lfw folder), I've decreased the amo
 ## Setting This Up and Getting Started
 
 1.) You can use a virtual environment if you wish
+
 2.) run `pip install -r requirements.txt`
-3.) run `python main.py <path to the image you want to test>`
+
+3.) run `python main.py <path to the image you want to test>` so for example `python main.py Aaron_Eckhart/Aaron_Eckhart_0001.jpg`
+
 Running the code and training the model etc. will take a few minutes. Please be patient and wait on the results :) !
