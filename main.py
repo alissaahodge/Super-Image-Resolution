@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # Start by importing the libraries we need
+import sys
 import numpy as np
 import cv2
 import glob
