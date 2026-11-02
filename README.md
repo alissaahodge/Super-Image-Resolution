@@ -1,25 +1,62 @@
 # Super-Image-Resolution
-## Enhancing Image Quality With Deep Learning
 
-This project implements image super-resolution using convolution neural networks and auto-encoders. This project idea was taken from a coursera course and part of the implementation was guided from an article. I will link both of these.
+A learning project exploring image restoration with a convolutional autoencoder and skip connections. Originally built using face images from LFW.
 
-The idea here is to train a neural network using auto encoders in order to enhance the resolution of images!
-If you want to understand the code andthe process some more check main.py where I’ve left a lot of comments explaining step by step what’s being done.
+> **Scope:** This model restores a downsampled image at **80×80 pixels**. It does **not** increase the output image dimensions or reconstruct guaranteed real-world detail. A true super-resolution model and interactive UI are planned future improvements.
 
-<code>
-<img src='https://github.com/alissaahodge/Super-Image-Resolution/blob/main/Screenshot%202021-12-31%20at%2012.08.00%20PM.png'/>
-</code>
+![Original project screenshot](Screenshot%202021-12-31%20at%2012.08.00%20PM.png)
 
-## About The Code
+## Setup
 
-We start by using a dataset of face images, (lfw folder), I've decreased the amount of photos in the dataset and added it to the repo. Then we lower the resolution of each and use these images as the input. The idea is to take these distorted images and feed it to our model and make model learn to get the original image back (i.e to enhance that image quality so we can get the original back).
+Use Python 3.11 and a virtual environment:
 
-## Setting This Up and Getting Started
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+```
 
-1.) You can use a virtual environment if you wish
+On Windows, activate with `.venv\\Scripts\\activate`.
 
-2.) run `pip install -r requirements.txt`
+## Train once
 
-3.) run `python main.py <path to the image you want to test>` so for example `python main.py Aaron_Eckhart/Aaron_Eckhart_0001.jpg`
+The original LFW sample images should be placed under `lfw/`:
 
-Running the code and training the model etc. will take a few minutes. Please be patient and wait on the results :) !
+```bash
+python main.py train --data-dir lfw --epochs 100
+```
+
+The trained model is saved to `models/super_resolution.keras` by default. Training can take time, depending on your hardware.
+
+## Enhance an image (without retraining)
+
+```bash
+python main.py enhance path/to/photo.jpg --output enhanced.png
+```
+
+The input is resized to 80×80 and downsampled to simulate degradation before restoration. The output is 80×80. For now, inference is a demonstration of the learned restoration task, **not** a general photo enhancement tool.
+
+## Tests
+
+```bash
+python -m pytest -q
+```
+
+Unit tests verify preprocessing shape preservation and input validation. GitHub Actions runs these tests without requiring a heavyweight model download. Training quality and TensorFlow runtime compatibility still require an end-to-end validation run.
+
+## Architecture
+
+- `resolution.py`: image loading, degradation and model architecture
+- `main.py train`: dataset loading, train/validation split, training and model saving
+- `main.py enhance`: saved-model inference and PNG export
+- `tests/`: preprocessing unit tests
+
+## Next iterations
+
+1. Benchmark restoration quality using PSNR/SSIM on a held-out test set and compare against bicubic interpolation.
+2. Add a FastAPI inference endpoint and React/TypeScript upload, compare and download interface.
+3. Explore true upscaling and a larger, more diverse dataset, then add screenshots and a deployed demo.
+
+## Credits
+
+This project began as a Coursera-inspired learning experiment, with guidance from an article. Original references should be added when available.
