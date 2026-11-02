@@ -32,4 +32,4 @@ npm run dev
 
 ### Credits
 
-This project began as a **Coursera-inspired computer-vision learning experiment**, with guidance from an external article. The exact original references aren't documented yet, so I'm leaving that attribution explicit rather than guessing a source. The residual model, benchmarks, API, and React interface are later extensions of the original work.
+This project began around 2020 as a computer vision learning exercise inspired by a Coursera course and an online tutorial. I no longer have the original references, but wanted to acknowledge those early learning resources. The project has since been substantially expanded with a new model architecture, benchmarking, and an interactive web application.
