@@ -1,11 +1,10 @@
 import io
 
 import pytest
-from PIL import Image
-
 pytest.importorskip("fastapi")
 pytest.importorskip("multipart")
 pytest.importorskip("httpx")
+Image = pytest.importorskip("PIL.Image")
 from fastapi.testclient import TestClient
 
 from api import app as api_module
