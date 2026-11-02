@@ -7,6 +7,7 @@ export default function App() {
   const [file, setFile] = useState<File | null>(null)
   const [original, setOriginal] = useState('')
   const [result, setResult] = useState('')
+  const [degraded, setDegraded] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [ready, setReady] = useState<boolean | null>(null)
@@ -25,6 +26,7 @@ export default function App() {
   }, [file])
 
   useEffect(() => () => { if (result) URL.revokeObjectURL(result) }, [result])
+  useEffect(() => () => { if (degraded) URL.revokeObjectURL(degraded) }, [degraded])
 
   function selectFile(next?: File) {
     if (!next) return
@@ -32,6 +34,7 @@ export default function App() {
     if (!ACCEPTED.includes(next.type)) { setError('Choose a JPEG, PNG, or WebP image.'); return }
     if (next.size > MAX_BYTES) { setError('Maximum image size is 10 MB.'); return }
     setResult(previous => { if (previous) URL.revokeObjectURL(previous); return '' })
+    setDegraded(previous => { if (previous) URL.revokeObjectURL(previous); return '' })
     setFile(next)
     setSplit(50)
   }
@@ -42,12 +45,18 @@ export default function App() {
     try {
       const body = new FormData()
       body.append('file', file)
+      const degradedBody = new FormData()
+      degradedBody.append('file', file)
+      const degradedResponse = await fetch('/api/degrade', { method: 'POST', body: degradedBody })
+      if (!degradedResponse.ok) throw new Error('Could not prepare the degraded comparison image.')
       const response = await fetch('/api/enhance', { method: 'POST', body })
       if (!response.ok) {
         const data = await response.json().catch(() => ({}))
         throw new Error(typeof data.detail === 'string' ? data.detail : 'Enhancement failed.')
       }
       const blob = await response.blob()
+      const degradedBlob = await degradedResponse.blob()
+      setDegraded(previous => { if (previous) URL.revokeObjectURL(previous); return URL.createObjectURL(degradedBlob) })
       setResult(previous => { if (previous) URL.revokeObjectURL(previous); return URL.createObjectURL(blob) })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.')
@@ -72,14 +81,14 @@ export default function App() {
         <section className="panel preview"><div className="panel-heading"><span className="step">02</span><h2>Compare results</h2><span className="panel-caption">BEFORE / AFTER</span></div>
           <div className="canvas">
             {original ? result ? <div className="comparison" style={{aspectRatio: '1 / 1'}}>
-              <img src={original} alt="Original uploaded image" className="comparison-image" />
+              <img src={degraded || original} alt="Degraded input image" className="comparison-image" />
               <div className="after-layer" style={{clipPath: `inset(0 ${100 - split}% 0 0)`}}><img src={result} alt="Restored image" className="comparison-image" /></div>
               <div className="divider-line" style={{left: `${split}%`}}><span>↔</span></div>
-              <input className="comparison-range" type="range" min="0" max="100" value={split} onChange={e => setSplit(Number(e.target.value))} aria-label="Reveal enhanced image; left is enhanced, right is original" />
-              <span className="image-label label-before">AFTER</span><span className="image-label label-after">BEFORE</span>
+              <input className="comparison-range" type="range" min="0" max="100" value={split} onChange={e => setSplit(Number(e.target.value))} aria-label="Reveal restored image; left is restored, right is degraded" />
+              <span className="image-label label-before">AFTER</span><span className="image-label label-after">DEGRADED</span>
             </div> : <img className="single-image" src={original} alt="Selected image preview" /> : <div className="empty"><span className="empty-symbol">▧</span><strong>Your transformation starts here</strong><span>Upload an image to preview the results</span></div>}
           </div>
-          <div className="preview-footer"><span>{result ? 'Drag the slider to compare' : 'Your preview will appear here'}</span>{result && <a className="download" href={result} download="enhanced.png">↓ Download PNG</a>}</div>
+          <div className="preview-footer"><span>{result ? 'Compare degraded input with restored output' : 'Your preview will appear here'}</span>{result && <a className="download" href={result} download="enhanced.png">↓ Download PNG</a>}</div>
         </section>
       </div>
       <footer><span>BUILT WITH REACT + FASTAPI + TENSORFLOW</span><span>REAL METRICS. REAL IMAGES. NO MAGIC.</span></footer>
