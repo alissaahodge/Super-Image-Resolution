@@ -38,8 +38,6 @@ def health():
 async def enhance(file: UploadFile = File(...)):
     if file.content_type not in {"image/jpeg", "image/png", "image/webp"}:
         raise HTTPException(415, "Upload a JPEG, PNG, or WebP image.")
-    if not MODEL_PATH.is_file():
-        raise HTTPException(503, "No trained model found. Train a model and set MODEL_PATH.")
     raw = await file.read(MAX_BYTES + 1)
     if len(raw) > MAX_BYTES:
         raise HTTPException(413, "Image exceeds the 10 MB upload limit.")
@@ -51,6 +49,8 @@ async def enhance(file: UploadFile = File(...)):
             rgb = np.asarray(image, dtype=np.float32) / 255.0
     except (UnidentifiedImageError, OSError, ValueError):
         raise HTTPException(422, "The file is not a valid image.")
+    if not MODEL_PATH.is_file():
+        raise HTTPException(503, "No trained model found. Train a model and set MODEL_PATH.")
     try:
         degraded = pixelate_image(rgb)
         prediction = get_model().predict(degraded[None, ...], verbose=0)[0]
