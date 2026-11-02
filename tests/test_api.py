@@ -21,6 +21,6 @@ def test_rejects_non_image():
     assert response.status_code == 415
 
 
-def test_rejects_invalid_image():
+def test_missing_model_is_reported():
     response = client.post("/api/enhance", files={"file": ("bad.png", b"not an image", "image/png")})
     assert response.status_code == 503
