@@ -36,7 +36,7 @@ jobs:
           folder = Path("lfw-eval")
           folder.mkdir(exist_ok=True)
           for i in indices:
-              rgb = np.clip(dataset.images[i], 0, 255).astype(np.uint8)
+              rgb = np.clip(dataset.images[i] * 255.0, 0, 255).round().astype(np.uint8)
               Image.fromarray(rgb, mode="RGB").save(folder / f"face_{i:05d}.jpg")
           print(f"Prepared {len(indices)} real LFW images")
           PY
