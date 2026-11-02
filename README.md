@@ -51,6 +51,18 @@ Unit tests verify preprocessing shape preservation and input validation. GitHub 
 - `main.py enhance`: saved-model inference and PNG export
 - `tests/`: preprocessing unit tests
 
+## Evaluate image quality
+
+After training a fresh model with this version, run:
+
+```bash
+python benchmark.py --data-dir lfw --model models/super_resolution.keras
+```
+
+This compares model output against a bicubic interpolation baseline on a held-out 20% test split. The training pipeline uses a separate 60% training / 20% validation / 20% test split, based on sorted paths and the same seed. The benchmark writes per-image PSNR (dB) and SSIM values to `results/benchmark.csv`, and prints averages. Higher is better for both metrics. **Do not benchmark a model trained with the previous 80/20 split:** it may have trained on these test images.
+
+No quality improvements are claimed until real benchmark results are recorded.
+
 ## Next iterations
 
 1. Benchmark restoration quality using PSNR/SSIM on a held-out test set and compare against bicubic interpolation.
