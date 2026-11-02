@@ -6,7 +6,15 @@ An interactive **AI image-restoration demo** built with React, TypeScript, FastA
 
 ## Preview
 
-Screenshots of the running React app will be added before PR #4 is marked ready. For now, see the [original project's screenshot](Screenshot%202021-12-31%20at%2012.08.00%20PM.png).
+The screenshots below are captured automatically from the **running React app and a trained model** during the real-image evaluation workflow. They will appear once the screenshot job finishes successfully.
+
+**Upload interface**
+
+![Restore Studio upload interface](docs/images/studio-upload.png)
+
+**Before / after comparison**
+
+![Interactive comparison of original and restored images](docs/images/studio-comparison.png)
 
 ## How it works
 
