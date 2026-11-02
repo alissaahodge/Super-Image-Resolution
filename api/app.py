@@ -64,3 +64,25 @@ async def enhance(file: UploadFile = File(...)):
         "Content-Disposition": 'attachment; filename="enhanced.png"',
         "Cache-Control": "no-store",
     })
+
+
+@app.post("/api/degrade")
+async def degrade(file: UploadFile = File(...)):
+    """Return the exact degraded input used by the restoration model."""
+    if file.content_type not in {"image/jpeg", "image/png", "image/webp"}:
+        raise HTTPException(415, "Upload a JPEG, PNG, or WebP image.")
+    raw = await file.read(MAX_BYTES + 1)
+    if len(raw) > MAX_BYTES:
+        raise HTTPException(413, "Image exceeds the 10 MB upload limit.")
+    try:
+        with Image.open(io.BytesIO(raw)) as source:
+            source.verify()
+        with Image.open(io.BytesIO(raw)) as source:
+            rgb = np.asarray(source.convert("RGB").resize(IMAGE_SIZE), dtype=np.float32) / 255.0
+        degraded = pixelate_image(rgb)
+        output = Image.fromarray(np.rint(np.clip(degraded, 0, 1) * 255).astype(np.uint8), "RGB")
+        buffer = io.BytesIO()
+        output.save(buffer, format="PNG")
+    except (UnidentifiedImageError, OSError, ValueError):
+        raise HTTPException(422, "The file is not a valid image.")
+    return Response(buffer.getvalue(), media_type="image/png", headers={"Cache-Control": "no-store"})
