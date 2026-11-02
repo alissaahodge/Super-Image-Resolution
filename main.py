@@ -18,11 +18,17 @@ def train(args):
     paths = sorted(Path(args.data_dir).rglob("*.jpg"))
     if len(paths) < 10:
         raise ValueError("Need at least 10 JPG images in the training directory")
-    originals = np.stack([load_image(p) for p in paths])
-    low_res = np.stack([pixelate_image(im) for im in originals])
-    x_train, x_val, y_train, y_val = train_test_split(
-        low_res, originals, test_size=0.2, random_state=args.seed
+    # Reserve 20% for final evaluation, never used for training or validation.
+    train_val_paths, _ = train_test_split(
+        paths, test_size=0.2, random_state=args.seed
     )
+    train_paths, val_paths = train_test_split(
+        train_val_paths, test_size=0.25, random_state=args.seed
+    )
+    y_train = np.stack([load_image(p) for p in train_paths])
+    y_val = np.stack([load_image(p) for p in val_paths])
+    x_train = np.stack([pixelate_image(im) for im in y_train])
+    x_val = np.stack([pixelate_image(im) for im in y_val])
     model = build_model()
     model.fit(
         x_train, y_train, validation_data=(x_val, y_val),
