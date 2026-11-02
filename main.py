@@ -8,7 +8,7 @@ from pathlib import Path
 
 import numpy as np
 
-from resolution import build_model, load_image, pixelate_image
+from resolution import build_model, build_residual_model, load_image, pixelate_image
 
 
 def train(args):
@@ -29,7 +29,7 @@ def train(args):
     y_val = np.stack([load_image(p) for p in val_paths])
     x_train = np.stack([pixelate_image(im) for im in y_train])
     x_val = np.stack([pixelate_image(im) for im in y_val])
-    model = build_model()
+    model = build_residual_model() if args.architecture == 'residual' else build_model()
     model.fit(
         x_train, y_train, validation_data=(x_val, y_val),
         epochs=args.epochs, batch_size=args.batch_size,
@@ -69,6 +69,7 @@ def main():
     train_parser.add_argument("--epochs", type=int, default=100)
     train_parser.add_argument("--batch-size", type=int, default=32)
     train_parser.add_argument("--seed", type=int, default=32)
+    train_parser.add_argument("--architecture", choices=("autoencoder", "residual"), default="autoencoder")
     train_parser.set_defaults(handler=train)
     enhance_parser = sub.add_parser("enhance", help="Enhance with a saved model")
     enhance_parser.add_argument("image")

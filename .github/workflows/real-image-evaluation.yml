@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feat/image-quality-benchmarks
+      - feat/residual-restoration-model
   pull_request:
   workflow_dispatch:
 jobs:
@@ -41,7 +42,7 @@ jobs:
           print(f"Prepared {len(indices)} real LFW images")
           PY
       - name: Train model on real face images
-        run: python main.py train --data-dir lfw-eval --epochs 8 --batch-size 16 --seed 32 --model real_lfw_model.keras
+        run: python main.py train --data-dir lfw-eval --epochs 16 --batch-size 16 --seed 32 --architecture residual --model real_lfw_model.keras
       - name: Evaluate held-out images against bicubic
         run: python benchmark.py --data-dir lfw-eval --seed 32 --model real_lfw_model.keras --output results/lfw_benchmark.csv
       - name: Export metrics summary and visual comparisons

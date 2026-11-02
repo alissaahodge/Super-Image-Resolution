@@ -29,6 +29,29 @@ def pixelate_image(image, scale_percent=40):
     return cv2.resize(small, (width, height), interpolation=cv2.INTER_LINEAR)
 
 
+def build_residual_model():
+    """Predict a correction to the degraded input, starting from identity."""
+    from tensorflow import keras
+
+    layers = keras.layers
+    inputs = layers.Input(shape=(80, 80, 3))
+    x = layers.Conv2D(48, 3, padding="same", activation="relu")(inputs)
+    for _ in range(4):
+        shortcut = x
+        x = layers.Conv2D(48, 3, padding="same", activation="relu")(x)
+        x = layers.Conv2D(48, 3, padding="same")(x)
+        x = layers.Add()([shortcut, x])
+        x = layers.Activation("relu")(x)
+    correction = layers.Conv2D(
+        3, 3, padding="same", kernel_initializer="zeros",
+        bias_initializer="zeros"
+    )(x)
+    outputs = layers.Add()([inputs, correction])
+    model = keras.Model(inputs, outputs)
+    model.compile(optimizer=keras.optimizers.Adam(learning_rate=0.0003), loss="mse")
+    return model
+
+
 def build_model():
     """Build the original skip-connected convolutional autoencoder."""
     from tensorflow import keras
