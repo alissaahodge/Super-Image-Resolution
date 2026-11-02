@@ -117,7 +117,9 @@ jobs:
           else:
               raise RuntimeError("Frontend did not start")
           PY
-          python scripts/capture_studio.py
+          git fetch origin feat/interactive-image-studio
+          git show origin/feat/interactive-image-studio:scripts/capture_studio.py > /tmp/capture_studio.py
+          python /tmp/capture_studio.py
       - name: Commit real screenshots to PR branch
         if: github.event_name == 'push' && github.ref == 'refs/heads/feat/interactive-image-studio' && success()
         run: |
