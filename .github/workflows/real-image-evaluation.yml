@@ -6,6 +6,8 @@ on:
       - feat/residual-restoration-model
   pull_request:
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   lfw-evaluation:
     runs-on: ubuntu-latest
@@ -91,11 +93,46 @@ jobs:
                   board.paste(tile.resize((width, height)), (col * width, 36 + row_idx * height))
           board.save("results/comparison.png")
           PY
+      - name: Capture real app screenshots (PR #4 branch only)
+        if: github.ref == 'refs/heads/feat/interactive-image-studio'
+        env:
+          MODEL_PATH: real_lfw_model.keras
+        run: |
+          python -m pip install -r api/requirements.txt playwright
+          python -m playwright install --with-deps chromium
+          cd frontend && npm install && npm run build && cd ..
+          uvicorn api.app:app --host 127.0.0.1 --port 8000 > /tmp/api.log 2>&1 &
+          cd frontend && npm run dev -- --host 127.0.0.1 > /tmp/vite.log 2>&1 &
+          cd ..
+          python - <<'PY'
+          import time
+          import urllib.request
+          for _ in range(90):
+              try:
+                  urllib.request.urlopen("http://127.0.0.1:5173", timeout=2)
+                  break
+              except Exception:
+                  time.sleep(1)
+          else:
+              raise RuntimeError("Frontend did not start")
+          PY
+          python scripts/capture_studio.py
+      - name: Commit real screenshots to PR branch
+        if: github.ref == 'refs/heads/feat/interactive-image-studio' && success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/images/studio-upload.png docs/images/studio-comparison.png
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: add actual app screenshots [skip ci]"
+            git push origin HEAD:feat/interactive-image-studio
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: lfw-quality-results
           path: |
             results/
+            docs/images/
           if-no-files-found: warn
           retention-days: 30
