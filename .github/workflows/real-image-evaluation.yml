@@ -4,6 +4,7 @@ on:
     branches:
       - feat/image-quality-benchmarks
       - feat/residual-restoration-model
+      - feat/interactive-image-studio
   pull_request:
   workflow_dispatch:
 permissions:
@@ -94,7 +95,7 @@ jobs:
           board.save("results/comparison.png")
           PY
       - name: Capture real app screenshots (PR #4 branch only)
-        if: github.ref == 'refs/heads/feat/interactive-image-studio'
+        if: (github.ref == 'refs/heads/feat/interactive-image-studio' || github.head_ref == 'feat/interactive-image-studio')
         env:
           MODEL_PATH: real_lfw_model.keras
         run: |
@@ -118,7 +119,7 @@ jobs:
           PY
           python scripts/capture_studio.py
       - name: Commit real screenshots to PR branch
-        if: github.ref == 'refs/heads/feat/interactive-image-studio' && success()
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feat/interactive-image-studio' && success()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
