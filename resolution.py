@@ -52,8 +52,5 @@ def build_model():
     x14 = layers.Add()([x2, x13])
     outputs = layers.Conv2D(3, 3, padding="same", activation="sigmoid")(x14)
     model = keras.Model(inputs, outputs)
-    model.compile(optimizer="adam", loss="mse", metrics=[
-        keras.metrics.PSNR(max_val=1.0, name="psnr"),
-        keras.metrics.SSIM(max_val=1.0, name="ssim"),
-    ])
+    model.compile(optimizer="adam", loss="mse")
     return model
