@@ -63,3 +63,10 @@ def test_enhance_returns_png(monkeypatch, tmp_path):
     assert response.headers["content-type"] == "image/png"
     with Image.open(io.BytesIO(response.content)) as result:
         assert result.size == (80, 80)
+
+
+def test_degrade_returns_model_input_png():
+    response = client.post("/api/degrade", files={"file": ("valid.png", image_bytes(), "image/png")})
+    assert response.status_code == 200
+    with Image.open(io.BytesIO(response.content)) as image:
+        assert image.size == (80, 80)
