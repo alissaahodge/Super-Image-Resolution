@@ -103,8 +103,7 @@ jobs:
           python -m playwright install --with-deps chromium
           cd frontend && npm install && npm run build && cd ..
           uvicorn api.app:app --host 127.0.0.1 --port 8000 > /tmp/api.log 2>&1 &
-          cd frontend && npm run dev -- --host 127.0.0.1 > /tmp/vite.log 2>&1 &
-          cd ..
+          (cd frontend && npm run dev -- --host 127.0.0.1 > /tmp/vite.log 2>&1) &
           python - <<'PY'
           import time
           import urllib.request
@@ -117,9 +116,7 @@ jobs:
           else:
               raise RuntimeError("Frontend did not start")
           PY
-          git fetch origin feat/interactive-image-studio
-          git show origin/feat/interactive-image-studio:scripts/capture_studio.py > /tmp/capture_studio.py
-          python /tmp/capture_studio.py
+          python scripts/capture_studio.py
       - name: Commit real screenshots to PR branch
         if: github.event_name == 'push' && github.ref == 'refs/heads/feat/interactive-image-studio' && success()
         run: |
