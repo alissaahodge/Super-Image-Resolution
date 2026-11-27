@@ -1,0 +1,54 @@
+name: Model smoke test
+on:
+  push:
+    branches:
+      - feat/image-quality-benchmarks
+  pull_request:
+  workflow_dispatch:
+jobs:
+  model-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --upgrade pip
+      - run: pip install -r requirements-dev.txt
+      - name: Generate deterministic synthetic training images
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import numpy as np
+          from PIL import Image
+          root = Path("smoke_images")
+          root.mkdir(exist_ok=True)
+          for i in range(12):
+              rng = np.random.default_rng(i)
+              image = rng.integers(0, 256, (80, 80, 3), dtype=np.uint8)
+              Image.fromarray(image).save(root / f"sample_{i:03}.jpg")
+          PY
+      - name: Train and save a model
+        run: python main.py train --data-dir smoke_images --epochs 1 --batch-size 4 --model smoke_model.keras
+      - name: Reload and enhance
+        run: python main.py enhance smoke_images/sample_000.jpg --model smoke_model.keras --output smoke_output.png
+      - name: Benchmark held-out images
+        run: python benchmark.py --data-dir smoke_images --model smoke_model.keras --output smoke_results.csv
+      - name: Validate generated outputs
+        run: |
+          python - <<'PY'
+          import csv
+          import math
+          from pathlib import Path
+          from PIL import Image
+          with Image.open("smoke_output.png") as image:
+              assert image.size == (80, 80), image.size
+          with open("smoke_results.csv", newline="") as stream:
+              rows = list(csv.DictReader(stream))
+          assert len(rows) == 3, len(rows)
+          for row in rows:
+              for metric in ("baseline_psnr", "model_psnr", "baseline_ssim", "model_ssim"):
+                  assert math.isfinite(float(row[metric])), (metric, row)
+          print("End-to-end model smoke test passed")
+          PY

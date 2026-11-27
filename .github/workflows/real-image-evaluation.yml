@@ -1,0 +1,100 @@
+name: Real-image quality evaluation
+on:
+  push:
+    branches:
+      - feat/image-quality-benchmarks
+  pull_request:
+  workflow_dispatch:
+jobs:
+  lfw-evaluation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      TF_CPP_MIN_LOG_LEVEL: '2'
+      OMP_NUM_THREADS: '2'
+      TF_NUM_INTEROP_THREADS: '2'
+      TF_NUM_INTRAOP_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --upgrade pip
+      - run: pip install -r requirements-dev.txt
+      - name: Download reproducible real LFW face-image subset
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import numpy as np
+          from PIL import Image
+          from sklearn.datasets import fetch_lfw_people
+
+          dataset = fetch_lfw_people(data_home=".lfw-cache", resize=0.5, color=True, download_if_missing=True)
+          # A bounded, reproducible real-image sample keeps CPU CI affordable.
+          rng = np.random.default_rng(32)
+          indices = np.sort(rng.choice(len(dataset.images), size=min(600, len(dataset.images)), replace=False))
+          folder = Path("lfw-eval")
+          folder.mkdir(exist_ok=True)
+          for i in indices:
+              rgb = np.clip(dataset.images[i] * 255.0, 0, 255).round().astype(np.uint8)
+              Image.fromarray(rgb, mode="RGB").save(folder / f"face_{i:05d}.jpg")
+          print(f"Prepared {len(indices)} real LFW images")
+          PY
+      - name: Train model on real face images
+        run: python main.py train --data-dir lfw-eval --epochs 8 --batch-size 16 --seed 32 --model real_lfw_model.keras
+      - name: Evaluate held-out images against bicubic
+        run: python benchmark.py --data-dir lfw-eval --seed 32 --model real_lfw_model.keras --output results/lfw_benchmark.csv
+      - name: Export metrics summary and visual comparisons
+        run: |
+          python - <<'PY'
+          import csv
+          import json
+          import math
+          from pathlib import Path
+          import numpy as np
+          from PIL import Image, ImageDraw
+          from sklearn.model_selection import train_test_split
+          from tensorflow import keras
+          from benchmark import bicubic_baseline
+          from resolution import load_image, pixelate_image
+
+          rows = list(csv.DictReader(open("results/lfw_benchmark.csv", newline="")))
+          assert len(rows) == 120, f"Expected 120 held-out images, got {len(rows)}"
+          metrics = {}
+          for metric in ("psnr", "ssim"):
+              for kind in ("baseline", "model"):
+                  vals = [float(row[f"{kind}_{metric}"]) for row in rows]
+                  assert all(math.isfinite(v) for v in vals), (kind, metric)
+                  metrics[f"{kind}_{metric}"] = float(np.mean(vals))
+          metrics["n_test"] = len(rows)
+          metrics["psnr_delta_db"] = metrics["model_psnr"] - metrics["baseline_psnr"]
+          metrics["ssim_delta"] = metrics["model_ssim"] - metrics["baseline_ssim"]
+          Path("results/summary.json").write_text(json.dumps(metrics, indent=2) + "\n")
+          print(json.dumps(metrics, indent=2))
+
+          model = keras.models.load_model("real_lfw_model.keras", compile=False)
+          samples = rows[:6]
+          scale = 3
+          width, height = 80 * scale, 80 * scale
+          board = Image.new("RGB", (width * 4, height * len(samples) + 36), "white")
+          draw = ImageDraw.Draw(board)
+          for col, label in enumerate(("Original", "Degraded", "Bicubic", "Model")):
+              draw.text((col * width + 8, 10), label, fill="black")
+          for row_idx, sample in enumerate(samples):
+              original = load_image(sample["image"])
+              degraded = pixelate_image(original)
+              baseline = bicubic_baseline(original)
+              prediction = np.clip(model.predict(degraded[None, ...], verbose=0)[0], 0, 1)
+              for col, img in enumerate((original, degraded, baseline, prediction)):
+                  tile = Image.fromarray((np.clip(img, 0, 1) * 255).astype(np.uint8))
+                  board.paste(tile.resize((width, height)), (col * width, 36 + row_idx * height))
+          board.save("results/comparison.png")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lfw-quality-results
+          path: |
+            results/
+          if-no-files-found: warn
+          retention-days: 30
